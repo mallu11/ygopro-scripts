@@ -20,10 +20,12 @@ end
 function c94561645.activate(e,tp,eg,ep,ev,re,r,rp)
 	if Duel.NegateAttack() and Duel.Draw(tp,1,REASON_EFFECT)~=0 then
 		local tc=Duel.GetOperatedGroup():GetFirst()
-		if tc:IsType(TYPE_MONSTER) and tc:IsSummonable(true,nil)
-			and Duel.SelectYesNo(tp,aux.Stringid(94561645,0)) then
-			Duel.BreakEffect()
-			Duel.Summon(tp,tc,true,nil)
+		local ph=Duel.GetCurrentPhase()
+		if ph~=PHASE_DAMAGE and ph~=PHASE_DAMAGE_CAL and tc:IsType(TYPE_MONSTER) and tc:IsSummonable(true,nil) then
+			if Duel.SelectYesNo(tp,aux.Stringid(94561645,0)) then
+				Duel.BreakEffect()
+				Duel.Summon(tp,tc,true,nil)
+			end
 		end
 	end
 end
