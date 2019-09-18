@@ -20,10 +20,13 @@ function c84530620.target(e,tp,eg,ep,ev,re,r,rp,chk)
 	Duel.SetOperationInfo(0,CATEGORY_SUMMON,nil,1,0,0)
 end
 function c84530620.operation(e,tp,eg,ep,ev,re,r,rp)
-	Duel.Hint(HINT_SELECTMSG,tp,HINTMSG_SUMMON)
-	local g=Duel.SelectMatchingCard(tp,c84530620.filter,tp,LOCATION_HAND,0,1,1,nil)
-	local tc=g:GetFirst()
-	if tc then
-		Duel.Summon(tp,tc,true,nil)
+	local ph=Duel.GetCurrentPhase()
+    	if ph~=PHASE_DAMAGE and ph~=PHASE_DAMAGE_CAL then
+		Duel.Hint(HINT_SELECTMSG,tp,HINTMSG_SUMMON)
+		local g=Duel.SelectMatchingCard(tp,c84530620.filter,tp,LOCATION_HAND,0,1,1,nil)
+		local tc=g:GetFirst()
+		if tc then
+			Duel.Summon(tp,tc,true,nil)
+		end
 	end
 end
