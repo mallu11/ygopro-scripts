@@ -71,11 +71,14 @@ function c78358521.sumtg(e,tp,eg,ep,ev,re,r,rp,chk)
 	Duel.SetOperationInfo(0,CATEGORY_SUMMON,nil,1,0,0)
 end
 function c78358521.sumop(e,tp,eg,ep,ev,re,r,rp)
-	Duel.Hint(HINT_SELECTMSG,tp,HINTMSG_SUMMON)
-	local g=Duel.SelectMatchingCard(tp,c78358521.sumfilter,tp,LOCATION_HAND+LOCATION_MZONE,0,1,1,nil)
-	local tc=g:GetFirst()
-	if tc then
-		Duel.Summon(tp,tc,true,nil)
+	local ph=Duel.GetCurrentPhase()
+	if ph~=PHASE_DAMAGE and ph~=PHASE_DAMAGE_CAL then
+		Duel.Hint(HINT_SELECTMSG,tp,HINTMSG_SUMMON)
+		local g=Duel.SelectMatchingCard(tp,c78358521.sumfilter,tp,LOCATION_HAND+LOCATION_MZONE,0,1,1,nil)
+		local tc=g:GetFirst()
+		if tc then
+			Duel.Summon(tp,tc,true,nil)
+		end
 	end
 end
 function c78358521.decop(e,tp,eg,ep,ev,re,r,rp)
