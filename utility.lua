@@ -477,7 +477,7 @@ function Auxiliary.SynMixFilter2(c,f2,f3,f4,minc,maxc,syncard,mg,smat,c1,gc,mgch
 end
 function Auxiliary.SynMixFilter3(c,f3,f4,minc,maxc,syncard,mg,smat,c1,c2,gc,mgchk)
 	if f3 then
-		return f3(c,syncard,c1,c2) and mg:IsExists(Auxiliary.SynMixFilter4,1,Group.FromCards(c1,c2,c),f3,f4,minc,maxc,syncard,mg,smat,c1,c2,gc,mgchk)
+		return f3(c,syncard,c1,c2) and mg:IsExists(Auxiliary.SynMixFilter4,1,Group.FromCards(c1,c2,c),f4,minc,maxc,syncard,mg,smat,c1,c2,c,gc,mgchk)
 	else
 		return mg:IsExists(Auxiliary.SynMixFilter4,1,Group.FromCards(c1,c2),f4,minc,maxc,syncard,mg,smat,c1,c2,nil,gc,mgchk)
 	end
@@ -992,7 +992,6 @@ function Auxiliary.XyzLevelFreeOperation2(f,gf,minct,maxct,alterf,desc,op)
 				end
 			end
 end
---material_count: number of different names in material list
 --material: names in material list
 --Fusion monster, mixed materials
 function Auxiliary.AddFusionProcMix(c,sub,insf,...)
@@ -1003,15 +1002,31 @@ function Auxiliary.AddFusionProcMix(c,sub,insf,...)
 	for i=1,#val do
 		if type(val[i])=='function' then
 			fun[i]=function(c,fc,sub,mg,sg) return val[i](c,fc,sub,mg,sg) and not c:IsHasEffect(6205579) end
+		elseif type(val[i])=='table' then
+			fun[i]=function(c,fc,sub,mg,sg)
+					for _,fcode in ipairs(val[i]) do
+						if type(fcode)=='function' then
+							if fcode(c,fc,sub,mg,sg) and not c:IsHasEffect(6205579) then return true end
+						else
+							if c:IsFusionCode(fcode) or (sub and c:CheckFusionSubstitute(fc)) then return true end
+						end
+					end
+					return false
+			end
+			for _,fcode in ipairs(val[i]) do
+				if type(fcode)~='function' then mat[fcode]=true end
+			end
 		else
 			fun[i]=function(c,fc,sub) return c:IsFusionCode(val[i]) or (sub and c:CheckFusionSubstitute(fc)) end
-			table.insert(mat,val[i])
+			mat[val[i]]=true
 		end
 	end
-	if #mat>0 and c.material_count==nil then
+	if c.material==nil then
 		local mt=getmetatable(c)
-		mt.material_count=#mat
 		mt.material=mat
+	end
+	for index,_ in pairs(mat) do
+		Auxiliary.AddCodeList(c,index)
 	end
 	local e1=Effect.CreateEffect(c)
 	e1:SetType(EFFECT_TYPE_SINGLE)
@@ -1101,15 +1116,31 @@ function Auxiliary.AddFusionProcMixRep(c,sub,insf,fun1,minc,maxc,...)
 	for i=1,#val do
 		if type(val[i])=='function' then
 			fun[i]=function(c,fc,sub,mg,sg) return val[i](c,fc,sub,mg,sg) and not c:IsHasEffect(6205579) end
+		elseif type(val[i])=='table' then
+			fun[i]=function(c,fc,sub,mg,sg)
+					for _,fcode in ipairs(val[i]) do
+						if type(fcode)=='function' then
+							if fcode(c,fc,sub,mg,sg) and not c:IsHasEffect(6205579) then return true end
+						else
+							if c:IsFusionCode(fcode) or (sub and c:CheckFusionSubstitute(fc)) then return true end
+						end
+					end
+					return false
+			end
+			for _,fcode in ipairs(val[i]) do
+				if type(fcode)~='function' then mat[fcode]=true end
+			end
 		else
 			fun[i]=function(c,fc,sub) return c:IsFusionCode(val[i]) or (sub and c:CheckFusionSubstitute(fc)) end
-			table.insert(mat,val[i])
+			mat[val[i]]=true
 		end
 	end
-	if #mat>0 and c.material_count==nil then
+	if c.material==nil then
 		local mt=getmetatable(c)
-		mt.material_count=#mat
 		mt.material=mat
+	end
+	for index,_ in pairs(mat) do
+		Auxiliary.AddCodeList(c,index)
 	end
 	local e1=Effect.CreateEffect(c)
 	e1:SetType(EFFECT_TYPE_SINGLE)
@@ -1289,15 +1320,9 @@ function Auxiliary.AddFusionProcCode4(c,code1,code2,code3,code4,sub,insf)
 end
 --Fusion monster, name * n
 function Auxiliary.AddFusionProcCodeRep(c,code1,cc,sub,insf)
-	if c:IsStatus(STATUS_COPYING_EFFECT) then return end
 	local code={}
 	for i=1,cc do
 		code[i]=code1
-	end
-	if c.material_count==nil then
-		local mt=getmetatable(c)
-		mt.material_count=1
-		mt.material={code1}
 	end
 	Auxiliary.AddFusionProcMix(c,sub,insf,table.unpack(code))
 end
@@ -1371,13 +1396,15 @@ end
 function Auxiliary.FShaddollFilter2(c,attr)
 	return c:IsFusionAttribute(attr) or c:IsHasEffect(4904633)
 end
-function Auxiliary.FShaddollSpFilter1(c,tp,mg,exg,attr,chkf)
-	return mg:IsExists(Auxiliary.FShaddollSpFilter2,1,c,tp,c,attr,chkf) or (exg and exg:IsExists(Auxiliary.FShaddollSpFilter2,1,c,tp,c,attr,chkf))
+function Auxiliary.FShaddollSpFilter1(c,fc,tp,mg,exg,attr,chkf)
+	return mg:IsExists(Auxiliary.FShaddollSpFilter2,1,c,fc,tp,c,attr,chkf)
+		or (exg and exg:IsExists(Auxiliary.FShaddollSpFilter2,1,c,fc,tp,c,attr,chkf))
 end
-function Auxiliary.FShaddollSpFilter2(c,tp,mc,attr,chkf)
+function Auxiliary.FShaddollSpFilter2(c,fc,tp,mc,attr,chkf)
 	local sg=Group.FromCards(c,mc)
 	if sg:IsExists(Auxiliary.TuneMagicianCheckX,1,nil,sg,EFFECT_TUNE_MAGICIAN_F) then return false end
 	if not Auxiliary.MustMaterialCheck(sg,tp,EFFECT_MUST_BE_FMATERIAL) then return false end
+	if Auxiliary.FCheckAdditional and not Auxiliary.FCheckAdditional(tp,sg,fc) then return false end
 	return ((Auxiliary.FShaddollFilter1(c) and Auxiliary.FShaddollFilter2(mc,attr))
 		or (Auxiliary.FShaddollFilter2(c,attr) and Auxiliary.FShaddollFilter1(mc)))
 		and (chkf==PLAYER_NONE or Duel.GetLocationCountFromEx(tp,tp,sg)>0)
@@ -1388,23 +1415,23 @@ function Auxiliary.FShaddollCondition(attr)
 				local c=e:GetHandler()
 				local mg=g:Filter(Auxiliary.FShaddollFilter,nil,c,attr)
 				local tp=e:GetHandlerPlayer()
-				local fc=Duel.GetFieldCard(tp,LOCATION_SZONE,5)
+				local fc=Duel.GetFieldCard(tp,LOCATION_FZONE,0)
 				local exg=nil
 				if fc and fc:IsHasEffect(81788994) and fc:IsCanRemoveCounter(tp,0x16,3,REASON_EFFECT) then
 					exg=Duel.GetMatchingGroup(Auxiliary.FShaddollExFilter,tp,0,LOCATION_MZONE,mg,c,attr)
 				end
 				if gc then
 					if not mg:IsContains(gc) then return false end
-					return Auxiliary.FShaddollSpFilter1(gc,tp,mg,exg,attr,chkf)
+					return Auxiliary.FShaddollSpFilter1(gc,c,tp,mg,exg,attr,chkf)
 				end
-				return mg:IsExists(Auxiliary.FShaddollSpFilter1,1,nil,tp,mg,exg,attr,chkf)
+				return mg:IsExists(Auxiliary.FShaddollSpFilter1,1,nil,c,tp,mg,exg,attr,chkf)
 			end
 end
 function Auxiliary.FShaddollOperation(attr)
 	return	function(e,tp,eg,ep,ev,re,r,rp,gc,chkf)
 				local c=e:GetHandler()
 				local mg=eg:Filter(Auxiliary.FShaddollFilter,nil,c,attr)
-				local fc=Duel.GetFieldCard(tp,LOCATION_SZONE,5)
+				local fc=Duel.GetFieldCard(tp,LOCATION_FZONE,0)
 				local exg=nil
 				if fc and fc:IsHasEffect(81788994) and fc:IsCanRemoveCounter(tp,0x16,3,REASON_EFFECT) then
 					exg=Duel.GetMatchingGroup(Auxiliary.FShaddollExFilter,tp,0,LOCATION_MZONE,mg,c,attr)
@@ -1415,18 +1442,18 @@ function Auxiliary.FShaddollOperation(attr)
 					mg:RemoveCard(gc)
 				else
 					Duel.Hint(HINT_SELECTMSG,tp,HINTMSG_FMATERIAL)
-					g=mg:FilterSelect(tp,Auxiliary.FShaddollSpFilter1,1,1,nil,tp,mg,exg,attr,chkf)
+					g=mg:FilterSelect(tp,Auxiliary.FShaddollSpFilter1,1,1,nil,c,tp,mg,exg,attr,chkf)
 					mg:Sub(g)
 				end
-				if exg and exg:IsExists(Auxiliary.FShaddollSpFilter2,1,nil,tp,g:GetFirst(),attr,chkf)
+				if exg and exg:IsExists(Auxiliary.FShaddollSpFilter2,1,nil,c,tp,g:GetFirst(),attr,chkf)
 					and (mg:GetCount()==0 or (exg:GetCount()>0 and Duel.SelectYesNo(tp,aux.Stringid(81788994,0)))) then
 					fc:RemoveCounter(tp,0x16,3,REASON_EFFECT)
 					Duel.Hint(HINT_SELECTMSG,tp,HINTMSG_FMATERIAL)
-					local sg=exg:FilterSelect(tp,Auxiliary.FShaddollSpFilter2,1,1,nil,tp,g:GetFirst(),attr,chkf)
+					local sg=exg:FilterSelect(tp,Auxiliary.FShaddollSpFilter2,1,1,nil,c,tp,g:GetFirst(),attr,chkf)
 					g:Merge(sg)
 				else
 					Duel.Hint(HINT_SELECTMSG,tp,HINTMSG_FMATERIAL)
-					local sg=mg:FilterSelect(tp,Auxiliary.FShaddollSpFilter2,1,1,nil,tp,g:GetFirst(),attr,chkf)
+					local sg=mg:FilterSelect(tp,Auxiliary.FShaddollSpFilter2,1,1,nil,c,tp,g:GetFirst(),attr,chkf)
 					g:Merge(sg)
 				end
 				Duel.SetFusionMaterial(g)
@@ -1484,8 +1511,10 @@ end
 function Auxiliary.RitualCheckEqual(g,c,lv)
 	return g:CheckWithSumEqual(Card.GetRitualLevel,lv,#g,#g,c)
 end
+Auxiliary.RCheckAdditional=nil
 function Auxiliary.RitualCheck(g,tp,c,lv,greater_or_equal)
 	return Auxiliary["RitualCheck"..greater_or_equal](g,c,lv) and Duel.GetMZoneCount(tp,g,tp)>0 and (not c.mat_group_check or c.mat_group_check(g,tp))
+		and (not Auxiliary.RCheckAdditional or Auxiliary.RCheckAdditional(tp,g,c))
 end
 function Auxiliary.RitualCheckAdditionalLevel(c,rc)
 	local raw_level=c:GetRitualLevel(rc)
@@ -1497,23 +1526,24 @@ function Auxiliary.RitualCheckAdditionalLevel(c,rc)
 		return lv1
 	end
 end
+Auxiliary.RGCheckAdditional=nil
 function Auxiliary.RitualCheckAdditional(c,lv,greater_or_equal)
 	if greater_or_equal=="Equal" then
 		return	function(g)
-					return g:GetSum(Auxiliary.RitualCheckAdditionalLevel,c)<=lv
+					return (not Auxiliary.RGCheckAdditional or Auxiliary.RGCheckAdditional(g)) and g:GetSum(Auxiliary.RitualCheckAdditionalLevel,c)<=lv
 				end
 	else
 		return	function(g,ec)
 					if ec then
-						return g:GetSum(Auxiliary.RitualCheckAdditionalLevel,c)-Auxiliary.RitualCheckAdditionalLevel(ec,c)<=lv
+						return (not Auxiliary.RGCheckAdditional or Auxiliary.RGCheckAdditional(g,ec)) and g:GetSum(Auxiliary.RitualCheckAdditionalLevel,c)-Auxiliary.RitualCheckAdditionalLevel(ec,c)<=lv
 					else
-						return true
+						return not Auxiliary.RGCheckAdditional or Auxiliary.RGCheckAdditional(g)
 					end
 				end
 	end
 end
-function Auxiliary.RitualUltimateFilter(c,filter,e,tp,m1,m2,level_function,greater_or_equal)
-	if bit.band(c:GetType(),0x81)~=0x81 or (filter and not filter(c,e,tp)) or not c:IsCanBeSpecialSummoned(e,SUMMON_TYPE_RITUAL,tp,false,true) then return false end
+function Auxiliary.RitualUltimateFilter(c,filter,e,tp,m1,m2,level_function,greater_or_equal,chk)
+	if bit.band(c:GetType(),0x81)~=0x81 or (filter and not filter(c,e,tp,chk)) or not c:IsCanBeSpecialSummoned(e,SUMMON_TYPE_RITUAL,tp,false,true) then return false end
 	local mg=m1:Filter(Card.IsCanBeRitualMaterial,c,c)
 	if m2 then
 		mg:Merge(m2)
@@ -1536,14 +1566,17 @@ function Auxiliary.RitualUltimateTarget(filter,level_function,greater_or_equal,s
 	return	function(e,tp,eg,ep,ev,re,r,rp,chk)
 				if chk==0 then
 					local mg=Duel.GetRitualMaterial(tp)
-					if mat_filter then mg=mg:Filter(mat_filter,nil,e,tp) end
+					if mat_filter then mg=mg:Filter(mat_filter,nil,e,tp,true) end
 					local exg=nil
 					if grave_filter then
 						exg=Duel.GetMatchingGroup(Auxiliary.RitualExtraFilter,tp,LOCATION_GRAVE,0,nil,grave_filter)
 					end
-					return Duel.IsExistingMatchingCard(Auxiliary.RitualUltimateFilter,tp,summon_location,0,1,nil,filter,e,tp,mg,exg,level_function,greater_or_equal)
+					return Duel.IsExistingMatchingCard(Auxiliary.RitualUltimateFilter,tp,summon_location,0,1,nil,filter,e,tp,mg,exg,level_function,greater_or_equal,true)
 				end
 				Duel.SetOperationInfo(0,CATEGORY_SPECIAL_SUMMON,nil,1,tp,summon_location)
+				if grave_filter then
+					Duel.SetOperationInfo(0,CATEGORY_REMOVE,nil,0,tp,LOCATION_GRAVE)
+				end
 			end
 end
 function Auxiliary.RitualUltimateOperation(filter,level_function,greater_or_equal,summon_location,grave_filter,mat_filter)
@@ -1585,10 +1618,7 @@ function Auxiliary.AddRitualProcGreater(c,filter,summon_location,grave_filter,ma
 	return Auxiliary.AddRitualProcUltimate(c,filter,Card.GetOriginalLevel,"Greater",summon_location,grave_filter,mat_filter)
 end
 function Auxiliary.AddRitualProcGreaterCode(c,code1,summon_location,grave_filter,mat_filter)
-	if not c:IsStatus(STATUS_COPYING_EFFECT) and c.fit_monster==nil then
-		local mt=getmetatable(c)
-		mt.fit_monster={code1}
-	end
+	Auxiliary.AddCodeList(c,code1)
 	return Auxiliary.AddRitualProcGreater(c,Auxiliary.FilterBoolFunction(Card.IsCode,code1),summon_location,grave_filter,mat_filter)
 end
 --Ritual Summon, equal to fixed lv
@@ -1596,10 +1626,7 @@ function Auxiliary.AddRitualProcEqual(c,filter,summon_location,grave_filter,mat_
 	return Auxiliary.AddRitualProcUltimate(c,filter,Card.GetOriginalLevel,"Equal",summon_location,grave_filter,mat_filter)
 end
 function Auxiliary.AddRitualProcEqualCode(c,code1,summon_location,grave_filter,mat_filter)
-	if not c:IsStatus(STATUS_COPYING_EFFECT) and c.fit_monster==nil then
-		local mt=getmetatable(c)
-		mt.fit_monster={code1}
-	end
+	Auxiliary.AddCodeList(c,code1)
 	return Auxiliary.AddRitualProcEqual(c,Auxiliary.FilterBoolFunction(Card.IsCode,code1),summon_location,grave_filter,mat_filter)
 end
 --Ritual Summon, equal to monster lv
@@ -1607,17 +1634,11 @@ function Auxiliary.AddRitualProcEqual2(c,filter,summon_location,grave_filter,mat
 	return Auxiliary.AddRitualProcUltimate(c,filter,Card.GetLevel,"Equal",summon_location,grave_filter,mat_filter)
 end
 function Auxiliary.AddRitualProcEqual2Code(c,code1,summon_location,grave_filter,mat_filter)
-	if not c:IsStatus(STATUS_COPYING_EFFECT) and c.fit_monster==nil then
-		local mt=getmetatable(c)
-		mt.fit_monster={code1}
-	end
+	Auxiliary.AddCodeList(c,code1)
 	return Auxiliary.AddRitualProcEqual2(c,Auxiliary.FilterBoolFunction(Card.IsCode,code1),summon_location,grave_filter,mat_filter)
 end
 function Auxiliary.AddRitualProcEqual2Code2(c,code1,code2,summon_location,grave_filter,mat_filter)
-	if not c:IsStatus(STATUS_COPYING_EFFECT) and c.fit_monster==nil then
-		local mt=getmetatable(c)
-		mt.fit_monster={code1,code2}
-	end
+	Auxiliary.AddCodeList(c,code1,code2)
 	return Auxiliary.AddRitualProcEqual2(c,Auxiliary.FilterBoolFunction(Card.IsCode,code1,code2),summon_location,grave_filter,mat_filter)
 end
 --Ritual Summon, geq monster lv
@@ -1625,23 +1646,17 @@ function Auxiliary.AddRitualProcGreater2(c,filter,summon_location,grave_filter,m
 	return Auxiliary.AddRitualProcUltimate(c,filter,Card.GetLevel,"Greater",summon_location,grave_filter,mat_filter)
 end
 function Auxiliary.AddRitualProcGreater2Code(c,code1,summon_location,grave_filter,mat_filter)
-	if not c:IsStatus(STATUS_COPYING_EFFECT) and c.fit_monster==nil then
-		local mt=getmetatable(c)
-		mt.fit_monster={code1}
-	end
+	Auxiliary.AddCodeList(c,code1)
 	return Auxiliary.AddRitualProcGreater2(c,Auxiliary.FilterBoolFunction(Card.IsCode,code1),summon_location,grave_filter,mat_filter)
 end
 function Auxiliary.AddRitualProcGreater2Code2(c,code1,code2,summon_location,grave_filter,mat_filter)
-	if not c:IsStatus(STATUS_COPYING_EFFECT) and c.fit_monster==nil then
-		local mt=getmetatable(c)
-		mt.fit_monster={code1,code2}
-	end
+	Auxiliary.AddCodeList(c,code1,code2)
 	return Auxiliary.AddRitualProcGreater2(c,Auxiliary.FilterBoolFunction(Card.IsCode,code1,code2),summon_location,grave_filter,mat_filter)
 end
 --add procedure to Pendulum monster, also allows registeration of activation effect
 function Auxiliary.EnablePendulumAttribute(c,reg)
-	if not PENDULUM_CHECKLIST then
-		PENDULUM_CHECKLIST=0
+	if not Auxiliary.PendulumChecklist then
+		Auxiliary.PendulumChecklist=0
 		local ge1=Effect.GlobalEffect()
 		ge1:SetType(EFFECT_TYPE_FIELD+EFFECT_TYPE_CONTINUOUS)
 		ge1:SetCode(EVENT_PHASE_START+PHASE_DRAW)
@@ -1669,7 +1684,7 @@ function Auxiliary.EnablePendulumAttribute(c,reg)
 	end
 end
 function Auxiliary.PendulumReset(e,tp,eg,ep,ev,re,r,rp)
-	PENDULUM_CHECKLIST=0
+	Auxiliary.PendulumChecklist=0
 end
 function Auxiliary.PConditionExtraFilterSpecific(c,e,tp,lscale,rscale,te)
 	if not te then return true end
@@ -1693,14 +1708,14 @@ function Auxiliary.PConditionFilter(c,e,tp,lscale,rscale,eset)
 	return (c:IsLocation(LOCATION_HAND) or (c:IsFaceup() and c:IsType(TYPE_PENDULUM)))
 		and lv>lscale and lv<rscale and c:IsCanBeSpecialSummoned(e,SUMMON_TYPE_PENDULUM,tp,bool,bool)
 		and not c:IsForbidden()
-		and (PENDULUM_CHECKLIST&(0x1<<tp)==0 or Auxiliary.PConditionExtraFilter(c,e,tp,lscale,rscale,eset))
+		and (Auxiliary.PendulumChecklist&(0x1<<tp)==0 or Auxiliary.PConditionExtraFilter(c,e,tp,lscale,rscale,eset))
 end
 function Auxiliary.PendCondition()
 	return	function(e,c,og)
 				if c==nil then return true end
 				local tp=c:GetControler()
 				local eset={Duel.IsPlayerAffectedByEffect(tp,EFFECT_EXTRA_PENDULUM_SUMMON)}
-				if PENDULUM_CHECKLIST&(0x1<<tp)~=0 and #eset==0 then return false end
+				if Auxiliary.PendulumChecklist&(0x1<<tp)~=0 and #eset==0 then return false end
 				local rpz=Duel.GetFieldCard(tp,LOCATION_PZONE,1)
 				if rpz==nil or c==rpz then return false end
 				local lscale=c:GetLeftScale()
@@ -1753,7 +1768,7 @@ function Auxiliary.PendOperation()
 					tg=Duel.GetMatchingGroup(Auxiliary.PConditionFilter,tp,loc,0,nil,e,tp,lscale,rscale,eset)
 				end
 				local ce=nil
-				local b1=PENDULUM_CHECKLIST&(0x1<<tp)==0
+				local b1=Auxiliary.PendulumChecklist&(0x1<<tp)==0
 				local b2=#eset>0
 				if b1 and b2 then
 					local options={1163}
@@ -1784,7 +1799,7 @@ function Auxiliary.PendOperation()
 					Duel.Hint(HINT_CARD,0,ce:GetOwner():GetOriginalCode())
 					ce:Reset()
 				else
-					PENDULUM_CHECKLIST=PENDULUM_CHECKLIST|(0x1<<tp)
+					Auxiliary.PendulumChecklist=Auxiliary.PendulumChecklist|(0x1<<tp)
 				end
 				sg:Merge(g)
 				Duel.HintSelection(Group.FromCards(c))
@@ -1807,7 +1822,7 @@ function Auxiliary.EnableReviveLimitPendulumSummonable(c, loc)
 	c:RegisterEffect(e1)
 end
 function Auxiliary.PendulumSummonableBool(c)
-	return c.psummonable_location~=nil and c:GetLocation() & c.psummonable_location > 0
+	return c.psummonable_location~=nil and c:GetLocation()&c.psummonable_location>0
 end
 function Auxiliary.PSSCompleteProcedure(e,tp,eg,ep,ev,re,r,rp)
 	local c=e:GetHandler()
@@ -1852,7 +1867,7 @@ function Auxiliary.LCheckOtherMaterial(c,mg,lc,tp)
 	local le={c:IsHasEffect(EFFECT_EXTRA_LINK_MATERIAL,tp)}
 	for _,te in pairs(le) do
 		local f=te:GetValue()
-		if f and not f(te,lc,mg) then return false end
+		if f and not f(te,lc,mg,c) then return false end
 	end
 	return true
 end
@@ -1872,7 +1887,7 @@ function Auxiliary.LExtraMaterialCount(mg,lc,tp)
 		for _,te in pairs(le) do
 			local sg=mg:Filter(aux.TRUE,tc)
 			local f=te:GetValue()
-			if not f or f(te,lc,sg) then
+			if not f or f(te,lc,sg,tc) then
 				te:UseCountLimit(tp)
 			end
 		end
@@ -1946,30 +1961,54 @@ function Auxiliary.LinkOperation(f,minc,maxc,gf)
 				g:DeleteGroup()
 			end
 end
+function Auxiliary.EnableExtraDeckSummonCountLimit()
+	if Auxiliary.ExtraDeckSummonCountLimit~=nil then return end
+	Auxiliary.ExtraDeckSummonCountLimit={}
+	Auxiliary.ExtraDeckSummonCountLimit[0]=1
+	Auxiliary.ExtraDeckSummonCountLimit[1]=1
+	local ge1=Effect.GlobalEffect()
+	ge1:SetType(EFFECT_TYPE_CONTINUOUS+EFFECT_TYPE_FIELD)
+	ge1:SetCode(EVENT_PHASE_START+PHASE_DRAW)
+	ge1:SetOperation(Auxiliary.ExtraDeckSummonCountLimitReset)
+	Duel.RegisterEffect(ge1,0)
+end
+function Auxiliary.ExtraDeckSummonCountLimitReset()
+	Auxiliary.ExtraDeckSummonCountLimit[0]=1
+	Auxiliary.ExtraDeckSummonCountLimit[1]=1
+end
 function Auxiliary.IsMaterialListCode(c,code)
-	if not c.material then return false end
-	for i,mcode in ipairs(c.material) do
-		if code==mcode then return true end
-	end
-	return false
+	return c.material and c.material[code]
 end
 function Auxiliary.IsMaterialListSetCard(c,setcode)
 	if not c.material_setcode then return false end
 	if type(c.material_setcode)=='table' then
 		for i,scode in ipairs(c.material_setcode) do
 			if setcode&0xfff==scode&0xfff and setcode&scode==setcode then return true end
-		end	
+		end
 	else
 		return setcode&0xfff==c.material_setcode&0xfff and setcode&c.material_setcode==setcode
 	end
 	return false
 end
-function Auxiliary.IsCodeListed(c,code)
-	if not c.card_code_list then return false end
-	for i,ccode in ipairs(c.card_code_list) do
-		if code==ccode then return true end
+function Auxiliary.IsMaterialListType(c,type)
+	return c.material_type and type&c.material_type==type
+end
+function Auxiliary.AddCodeList(c,...)
+	if c:IsStatus(STATUS_COPYING_EFFECT) then return end
+	if c.card_code_list==nil then
+		local mt=getmetatable(c)
+		mt.card_code_list={}
+		for _,code in ipairs{...} do
+			mt.card_code_list[code]=true
+		end
+	else
+		for _,code in ipairs{...} do
+			c.card_code_list[code]=true
+		end
 	end
-	return false
+end
+function Auxiliary.IsCodeListed(c,code)
+	return c.card_code_list and c.card_code_list[code]
 end
 function Auxiliary.IsCounterAdded(c,counter)
 	if not c.counter_add_list then return false end
@@ -2170,6 +2209,26 @@ end
 --check for cards with different names
 function Auxiliary.dncheck(g)
 	return g:GetClassCount(Card.GetCode)==#g
+end
+--check for cards with different levels
+function Auxiliary.dlvcheck(g)
+	return g:GetClassCount(Card.GetLevel)==#g
+end
+--check for cards with different ranks
+function Auxiliary.drkcheck(g)
+	return g:GetClassCount(Card.GetRank)==#g
+end
+--check for cards with different links
+function Auxiliary.dlkcheck(g)
+	return g:GetClassCount(Card.GetLink)==#g
+end
+--check for cards with different attributes
+function Auxiliary.dabcheck(g)
+	return g:GetClassCount(Card.GetAttribute)==#g
+end
+--check for cards with different races
+function Auxiliary.drccheck(g)
+	return g:GetClassCount(Card.GetRace)==#g
 end
 --used for "except this card"
 function Auxiliary.ExceptThisCard(e)

@@ -53,14 +53,8 @@ function c4179255.drop(e,tp,eg,ep,ev,re,r,rp)
 	local p,d=Duel.GetChainInfo(0,CHAININFO_TARGET_PLAYER,CHAININFO_TARGET_PARAM)
 	Duel.Draw(p,d,REASON_EFFECT)
 end
-function c4179255.check()
-	local tc=Duel.GetFieldCard(0,LOCATION_SZONE,5)
-	if tc and tc:IsFaceup() then return true end
-	tc=Duel.GetFieldCard(1,LOCATION_SZONE,5)
-	return tc and tc:IsFaceup()
-end
 function c4179255.descon(e,tp,eg,ep,ev,re,r,rp)
-	return c4179255.check()
+	return Duel.IsExistingMatchingCard(nil,tp,LOCATION_FZONE,LOCATION_FZONE,1,nil)
 end
 function c4179255.desfilter(c)
 	return c:IsPosition(POS_FACEUP_ATTACK)
@@ -74,7 +68,8 @@ function c4179255.destg(e,tp,eg,ep,ev,re,r,rp,chk,chkc)
 end
 function c4179255.desop(e,tp,eg,ep,ev,re,r,rp)
 	local tc=Duel.GetFirstTarget()
-	if tc:IsRelateToEffect(e) and tc:IsPosition(POS_FACEUP_ATTACK) and c4179255.check() then
+	if tc:IsRelateToEffect(e) and tc:IsPosition(POS_FACEUP_ATTACK)
+		and Duel.IsExistingMatchingCard(nil,tp,LOCATION_FZONE,LOCATION_FZONE,1,nil) then
 		Duel.Destroy(tc,REASON_EFFECT)
 	end
 end

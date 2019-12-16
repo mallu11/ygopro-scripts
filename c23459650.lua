@@ -1,5 +1,6 @@
 --ネフティスの輪廻
 function c23459650.initial_effect(c)
+	aux.AddCodeList(c,88176533,24175232)
 	--Activate
 	local e1=Effect.CreateEffect(c)
 	e1:SetCategory(CATEGORY_SPECIAL_SUMMON)
@@ -9,7 +10,6 @@ function c23459650.initial_effect(c)
 	e1:SetOperation(c23459650.activate)
 	c:RegisterEffect(e1)
 end
-c23459650.fit_monster={88176533,24175232}
 function c23459650.filter(c,e,tp)
 	return c:IsSetCard(0x11f)
 end
@@ -21,6 +21,10 @@ function c23459650.target(e,tp,eg,ep,ev,re,r,rp,chk)
 	Duel.SetOperationInfo(0,CATEGORY_SPECIAL_SUMMON,nil,1,tp,LOCATION_HAND)
 end
 function c23459650.mfilter(c)
+	if c:IsPreviousLocation(LOCATION_MZONE) then
+		local code,code2=c:GetPreviousCodeOnField()
+		return code==88176533 or code==24175232 or code2==88176533 or code2==24175232
+	end
 	return c:IsCode(88176533,24175232)
 end
 function c23459650.activate(e,tp,eg,ep,ev,re,r,rp)

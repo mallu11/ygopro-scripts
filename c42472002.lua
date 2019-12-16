@@ -36,7 +36,7 @@ function c42472002.effop(e,tp,eg,ep,ev,re,r,rp)
 	local e1=Effect.CreateEffect(rc)
 	e1:SetDescription(aux.Stringid(42472002,0))
 	e1:SetType(EFFECT_TYPE_SINGLE+EFFECT_TYPE_TRIGGER_O)
-	e1:SetProperty(EFFECT_FLAG_CARD_TARGET)
+	e1:SetProperty(EFFECT_FLAG_DELAY)
 	e1:SetCode(EVENT_SPSUMMON_SUCCESS)
 	e1:SetCondition(c42472002.sumcon)
 	e1:SetTarget(c42472002.sumtg)
@@ -56,11 +56,12 @@ function c42472002.sumcon(e,tp,eg,ep,ev,re,r,rp)
 	return Duel.GetFlagEffect(tp,42472002)==0
 end
 function c42472002.sumtg(e,tp,eg,ep,ev,re,r,rp,chk)
-	if chk==0 then return Duel.IsPlayerCanSummon(tp) end
+	if chk==0 then return Duel.IsPlayerCanSummon(tp) and Duel.IsPlayerCanAdditionalSummon(tp) end
 end
 function c42472002.sumop(e,tp,eg,ep,ev,re,r,rp)
 	local c=e:GetHandler()
 	local e1=Effect.CreateEffect(c)
+	e1:SetDescription(aux.Stringid(42472002,1))
 	e1:SetType(EFFECT_TYPE_FIELD)
 	e1:SetCode(EFFECT_EXTRA_SUMMON_COUNT)
 	e1:SetTargetRange(LOCATION_HAND+LOCATION_MZONE,0)
